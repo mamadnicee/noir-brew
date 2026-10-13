@@ -1,0 +1,11 @@
+import {Suspense,useEffect,useMemo,useState} from 'react';
+import {Canvas,useFrame} from '@react-three/fiber';
+import {Environment,Float,Html,useGLTF} from '@react-three/drei';
+import * as THREE from 'three';
+import type {Station} from '../types';
+const views:Record<Station,[number,number,number]>={'HOME':[0,1.5,7],'ORIGIN':[-4,1.7,4.5],'ROAST LAB':[3.6,1.4,4.3],'BREW BAR':[0,2.1,4.2],'MENU':[4.5,1.2,2.8],'JOURNAL':[-3,2.8,3.4]};
+function Model(){const {scene}=useGLTF('/assets/clifford.glb');const model=useMemo(()=>{const m=scene.clone(true);const box=new THREE.Box3().setFromObject(m);const size=box.getSize(new THREE.Vector3());const s=4.2/Math.max(size.x,size.y,size.z);m.scale.setScalar(s);const center=box.getCenter(new THREE.Vector3());m.position.set(-center.x*s,-center.y*s-1.25,-center.z*s);return m},[scene]);return <primitive object={model}/>}
+function Rig({station}:{station:Station}){useFrame(({camera},delta)=>{const target=new THREE.Vector3(...views[station]);camera.position.lerp(target,1-Math.exp(-delta*1.7));camera.lookAt(0,0,0)});return null}
+function Fallback(){return <div className="scene-fallback" aria-label="Decorative coffee studio scene"><div className="fallback-glow"/><div className="fallback-cup">◒</div><span>NOIR / STUDIO 01</span></div>}
+export default function Scene({station,onReady,onError}:{station:Station;onReady:()=>void;onError:()=>void}){const [failed,setFailed]=useState(false);useEffect(()=>{const test=document.createElement('canvas');if(!test.getContext('webgl2')&&!test.getContext('webgl')){setFailed(true);onError()}},[]);if(failed)return <Fallback/>;return <Canvas className="three-canvas" dpr={[1,1.6]} camera={{position:views.HOME,fov:38}} gl={{antialias:true,alpha:true}} onCreated={()=>onReady()}><color attach="background" args={['#171411']}/><ambientLight intensity={1.35}/><directionalLight position={[4,7,5]} intensity={3.2} color="#ffd8b0"/><pointLight position={[-4,2,-2]} intensity={25} color="#b36a36"/><Suspense fallback={<Html center><span className="loading-label">PREPARING THE ROOM…</span></Html>}><Rig station={station}/><Float speed={0.5} rotationIntensity={0.025} floatIntensity={0.08}><Model/></Float><Environment preset="warehouse"/></Suspense></Canvas>}
+useGLTF.preload('/assets/clifford.glb');
